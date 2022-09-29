@@ -1,0 +1,526 @@
+<head>
+	<title>Assignment 7</title>
+	<meta charset="UTF-8">
+</head>
+<body>
+<br>
+<canvas id="canvas" width="1000" height="750" style="border:1px solid #cccccc;"></canvas>
+
+<script src ="temp.js"></script>
+<script type="text/javascript">
+
+let canvasScreen = document.querySelector("canvas");
+let context = canvasScreen.getContext("2d");
+
+class Sprite{
+    constructor(x, y, w, h, Direction, imageType, c)
+    {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.Direction = Direction;
+        this.imageType = imageType;
+        this.c = c;
+    }
+
+    loadImages(file_name)
+    {
+		this.__proto__.image = new Image();
+        this.__proto__.image.src  = file_name;
+    }
+
+	imageAnimation(file_name)
+	{
+		let imageTemp = new Image()
+		imageTemp.src = file_name;
+		return imageTemp
+	}
+    // draw(){ }
+    // update(){ }
+}
+
+class Link extends Sprite{
+    constructor(x, y)
+    {
+        super(x, y, 60, 65);
+        this.type = "Link";
+
+        this.loadImages("./linkSprite/link (0).png");
+        this.images = [];
+        this.imageNum = 0;
+
+        for(let i = 0; i < 44; i++)
+        {
+            this.images.push(this.imageAnimation("./linkSprite/link (" + i + ").png"));
+        }
+    }
+
+    draw(cameraposX, cameraposY)
+        {
+            context.drawImage(this.images[this.imageNum], this.x - cameraposX, this.y - cameraposY, this.w, this.h);
+        }
+
+    update()
+        { 
+        }
+}
+
+class Brick extends Sprite{
+    constructor(x, y)
+    {
+        super(x, y, 50, 50);
+        this.type = "Brick";
+    }
+
+    draw(cameraposX, cameraposY)
+    {
+        this.loadImages("brick.jpg");
+        context.drawImage(this.__proto__.image, this.x - cameraposX, this.y - cameraposY, this.w, this.h);
+    }
+
+    update()
+    {
+    }
+}
+
+class Boomerang extends Sprite{
+    constructor(x, y, Direction)
+    {
+        super(x, y, 50, 50, Direction);
+        this.type = "Boomerang";
+        //this.Direction = 1;
+    }
+    
+    draw(cameraposX, cameraposY)
+    {
+        if(this.Direction > 0)
+        {
+            this.loadImages("./boomerangSprite/boomerang" + this.Direction + ".png");
+            context.drawImage(this.__proto__.image, this.x - cameraposX, this.y - cameraposY, this.w, this.h);
+        }
+    }
+
+    update()
+    {
+        //Right      
+        if(this.Direction == 3)
+        {
+            this.x += 15;
+        }
+        //Left
+        else if(this.Direction == 2)
+        {
+            this.x -= 15;
+        }
+        //Down
+        else if(this.Direction == 4)
+        {
+            this.y += 15;
+        }
+        //Up
+        else if(this.Direction == 1)
+        {
+            this.y -= 15;
+        }
+    }
+}
+
+class Pot extends Sprite{
+    constructor(x, y, Direction, imageType, c)
+    {
+        super(x, y, 50, 50, Direction, c);
+        this.type = "Pot";
+        this.c = 0;
+        //this.Direction = 1;
+        //this.loadImages("pot.png");
+    }
+    draw(cameraposX, cameraposY)
+    {
+        //console.log(this.imageType);
+        if(this.imageType == 1)
+        {
+        this.loadImages("pot_broken.png");
+        context.drawImage(this.__proto__.image, this.x - cameraposX, this.y - cameraposY, this.w, this.h);
+        }
+        else
+        {
+        this.loadImages("pot.png");
+        context.drawImage(this.__proto__.image, this.x - cameraposX, this.y - cameraposY, this.w, this.h);    
+        }
+    }
+
+    update()
+    {
+        //console.log(this.Direction);
+        if(this.imageType == 1)
+        {
+            this.c++;     
+        }
+        if(this.Direction == 3)
+        {
+            this.x += 30;
+        }
+        else if(this.Direction == 2)
+        {
+            this.x -= 30;
+        }
+        else if(this.Direction == 4)
+        {
+            this.y += 30;
+        }
+        else if(this.Direction == 1)
+        {
+            this.y -= 30;
+        }
+    }
+}
+
+class Model{
+    constructor() 
+    {
+        this.sprites = [];
+        this.link = new Link(110, 80);
+        this.sprites.push(this.link);
+        //this.sprites.push(new Brick(200, 120));
+
+        brickArr.forEach(element => {
+            const map = new Brick(element[0], element[1]);
+            this.sprites.push(map);  
+        })
+
+        potArr.forEach(element => {
+            const map2 = new Pot(element[0], element[1], this.link.Direction);
+            this.sprites.push(map2);
+        })
+        this.cameraposX = 0;
+        this.cameraposY = 0;
+        
+    }
+
+    update()
+    {
+        this.sprites.forEach(sprite => {sprite.update();});
+
+        //Link and Brick and Pot
+        for(let i = 0; i < this.sprites.length; i++)
+        {
+            if(this.sprites[i].type === "Brick")
+            {
+                this.collisionGetOut(this.link, this.sprites[i]);   
+            }
+            else if(this.sprites[i].type === "Pot")
+            {
+                this.collisionGetOut(this.link, this.sprites[i]);
+                if(this.checkCollisions(this.link, this.sprites[i]))
+                {
+                    this.sprites[i].Direction = this.link.Direction;
+                }
+            }
+        }
+
+        //Boomerang and Brick
+        for(let i = 0; i < this.sprites.length; i++)
+        {
+            if(this.sprites[i].type === "Boomerang")
+            { 
+                for(let j = 0; j < this.sprites.length; j++)
+                {
+                    if(this.sprites[j].type === "Brick")
+                    {
+                        if(this.checkCollisions(this.sprites[i], this.sprites[j]))
+                        {
+                            this.sprites.splice(i, 1);
+                            break;
+                            //console.dir(this.sprites);
+                        }
+                    }
+                }
+            }
+        }
+
+        //Boomerang and Pot
+        for(let i = 0; i < this.sprites.length; i++)
+        {
+            if(this.sprites[i].type === "Boomerang")
+            { 
+                for(let j = 0; j < this.sprites.length; j++)
+                {
+                    if(this.sprites[j].type === "Pot")
+                    {
+                        if(this.checkCollisions(this.sprites[i], this.sprites[j]))
+                        {
+                            this.sprites[j].imageType = 1;
+                            this.sprites.splice(i, 1);         
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //Pot and Brick
+        for(let i = 0; i < this.sprites.length; i++)
+        {
+            if(this.sprites[i].type === "Pot")
+            { 
+                for(let j = 0; j < this.sprites.length; j++)
+                {
+                    if(this.sprites[j].type === "Brick")
+                    {
+                        this.collisionGetOut(this.sprites[i], this.sprites[j]);
+                        if(this.checkCollisions(this.sprites[i], this.sprites[j]))
+                        {
+                            this.sprites[i].imageType = 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        //Pot Removal
+        for(let i = 0; i < this.sprites.length; i++)
+        {
+            if(this.sprites[i].type === "Pot" && this.sprites[i].imageType == 1)
+            {
+                //console.log("C in Removal: " + this.sprites[i].c);
+                if(this.sprites[i].c >= 100)
+                {
+                    this.sprites.splice(i, 1);
+                }
+            }
+        }
+        this.roomChange();
+    }
+
+    roomChange()
+    {
+        if(this.link.x + this.link.w > 1010 && this.cameraposX < 1010)
+        {
+            this.cameraposX += 10;
+        }
+        if(this.link.x < 1010 && this.cameraposX > 0)
+        {
+            this.cameraposX -= 10;
+        }
+        if(this.link.y + this.link.h > 780 && this.cameraposY < 780)
+        {
+            this.cameraposY += 10;
+        }
+        if(this.link.y < 780 && this.cameraposY > 0)
+        {
+            this.cameraposY -= 10;
+        }
+    }
+
+    checkCollisions(collider1, collider2)
+    {
+		let Collider1Left =  collider1.x;
+		let Collider1Right = collider1.x + collider1.w;
+		let Collider2Left = collider2.x;
+		let Collider2Right = collider2.x + collider2.w;
+
+		let Collider1Top =  collider1.y;
+		let Collider1Bot = collider1.y + collider1.h;
+		let Collider2Top = collider2.y;
+		let Collider2Bot = collider2.y + collider2.h;
+
+		// console.log("Brick: " );
+		// console.log(Collider2Left, Collider2Top, collider2.w, collider2.h);
+		// console.log(collider2.x, collider2.y, collider2.w, collider2.h);
+
+		// console.log("Link: ")
+		// console.log(Collider1Left, Collider1Top, collider1.w, collider1.h);
+		// console.log(collider1.x, collider1.y, collider1.w, collider1.h);
+
+		if (Collider1Right < Collider2Left || Collider1Left > Collider2Right || Collider1Bot < Collider2Top || Collider1Top > Collider2Bot)
+		{	
+			
+			//console.log("COLLISION IS FALSE");
+			return false;
+		}
+		else
+		{
+			//console.log("COLLISION IS TRUE");
+			return true;
+		}
+	}
+
+    collisionGetOut(collider1, collider2)
+    {
+		let Collider1Top = collider1.y;
+		let Collider1Bot = collider1.y + collider1.h;
+		let Collider1Left = collider1.x;
+		let Collider1Right = collider1.x + collider1.w
+		let Collider2Top = collider2.y;
+		let Collider2Bot = collider2.y + collider2.h;
+		let Collider2Left = collider2.x;
+		let Collider2Right = collider2.x + collider2.w;
+
+        if(Collider1Right < Collider2Left || Collider1Left > Collider2Right ||
+		Collider1Bot < Collider2Top || Collider1Top > Collider2Bot)
+        {
+            return false;
+        }
+        else
+        {
+            let LeftCollision = Math.abs(Collider1Left - Collider2Right);
+			let RightCollision = Math.abs(Collider1Right - Collider2Left);
+			let BotCollision = Math.abs(Collider1Top - Collider2Bot);
+			let TopCollision = Math.abs(Collider1Bot - Collider2Top);
+			//let MaxCollision = Math.max(Math.max(LeftCollision, RightCollision), Math.max(BotCollision, TopCollision));
+            let MaxCollision = Math.max(LeftCollision, RightCollision, BotCollision, TopCollision);
+            
+            //console.log("Right Collision is: " + RightCollision);
+            //console.log(Math.max(LeftCollision, RightCollision));
+            
+            // console.log("Left Collision is: " + LeftCollision);
+            // console.log("Max Collision is: " + MaxCollision);
+            if(LeftCollision == MaxCollision)
+			{
+				collider1.x = Collider2Left - collider1.w;
+			}
+			else if(RightCollision == MaxCollision)
+			{
+				collider1.x = Collider2Right;
+			}
+			else if(TopCollision == MaxCollision)
+			{
+				collider1.y = Collider2Bot;                
+			}
+			else if(BotCollision == MaxCollision)
+			{	
+				collider1.y = Collider2Top - collider1.h;              
+			}
+			return true;
+        }
+    }
+}
+
+class View{
+    constructor(model)
+    {
+        this.model = model;
+    }
+
+    update()
+    {
+        context.clearRect(0, 0, canvasScreen.width, canvasScreen.height);
+
+        context.fillStyle = "green";
+        context.fillRect(1000 - this.model.cameraposX, 0 - this.model.cameraposY, 1000, 750);
+
+        context.fillStyle = "blue";
+        context.fillRect(0 - this.model.cameraposX, 0 - this.model.cameraposY, 1000, 750);
+
+        context.fillStyle = "red";
+        context.fillRect(0 - this.model.cameraposX, 750 - this.model.cameraposY, 1000, 750);
+
+        context.fillStyle = "yellow";
+        context.fillRect(1000 - this.model.cameraposX, 750 - this.model.cameraposY, 1000, 750);
+
+        this.model.sprites.forEach(sprite => {sprite.draw(this.model.cameraposX, this.model.cameraposY)});
+    }
+}
+
+class Controller{
+    constructor(model, view)
+    {
+        this.model = model;
+        this.view = view;
+        let self = this;
+        this.key_right = false;
+		this.key_left = false;
+		this.key_up = false;
+        this.key_down = false;
+
+        document.addEventListener('keydown', function(event) { self.keyDown(event); }, false);
+        document.addEventListener('keyup', function(event) { self.keyUp(event); }, false);
+    }
+
+    keyDown(event)
+	{
+		if(event.keyCode == 39)      {this.key_right = true; this.model.link.Direction = 3;}
+		else if(event.keyCode == 37) {this.key_left = true; this.model.link.Direction = 2;}
+		else if(event.keyCode == 38) {this.key_up = true; this.model.link.Direction = 1;}
+        else if(event.keyCode == 40) {this.key_down = true; this.model.link.Direction = 4;}
+        else if(event.keyCode == 17) {this.key_ctrl = true; this.model.sprites.push(new Boomerang(this.model.link.x, this.model.link.y, this.model.link.Direction));}
+	}
+
+	keyUp(event)
+	{
+		if(event.keyCode == 39)      this.key_right = false;
+		else if(event.keyCode == 37) this.key_left = false;
+		else if(event.keyCode == 38) this.key_up = false;
+        else if(event.keyCode == 40) this.key_down = false
+        else if(event.keyCode == 17) this.key_ctrl = false;
+        //else if(event.keyCode == 70) {this.model.sprites.pop();} 
+	}
+
+    update()
+    {
+        if(this.key_right)
+        {
+            this.model.link.x += 10;
+            if(this.model.link.imageNum < 34 || this.model.link.imageNum >= 43) 
+            {
+                this.model.link.imageNum = 34
+            }
+            this.model.link.imageNum++;
+            this.model.link.Direction = 3;
+        }
+        
+		else if(this.key_left)
+        {
+            this.model.link.x -= 10;
+            if(this.model.link.imageNum < 14 || this.model.link.imageNum >= 23) 
+            {
+                this.model.link.imageNum = 14
+            }
+            this.model.link.imageNum++;
+            this.model.link.Direction = 2;
+        }
+
+        else if(this.key_up)
+        {
+            this.model.link.y -= 10;
+            if(this.model.link.imageNum < 24 || this.model.link.imageNum >= 33) 
+            {
+                this.model.link.imageNum = 24
+            }
+            this.model.link.imageNum++;
+            this.model.link.Direction = 1;
+        }
+
+        else if(this.key_down)
+        {
+            this.model.link.y += 10;
+            if(this.model.link.imageNum < 4 || this.model.link.imageNum >= 13) 
+            {
+                this.model.link.imageNum = 4
+            }
+            this.model.link.imageNum++;
+            this.model.link.Direction = 4;
+        }
+    }
+}
+
+class Game{
+    constructor()
+    {
+        this.model = new Model();
+		this.view = new View(this.model);
+		this.controller = new Controller(this.model, this.view);
+    }
+    onTimer()
+	{
+		this.controller.update();
+		this.model.update();
+		this.view.update();
+	}
+}
+let game = new Game();
+let timer = setInterval(function() { game.onTimer(); }, 40);
+
+</script>
+</body>
